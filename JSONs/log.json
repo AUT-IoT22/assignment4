@@ -1,0 +1,12 @@
+{
+    "timestamp": 1653572066,
+    "type": "light",
+    "device": "ldr",
+    "states": [
+        {
+            "name": "light",
+            "value": 100
+        }
+    ],
+    "agent": "a-very-unique-id"
+}

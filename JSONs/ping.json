@@ -1,0 +1,26 @@
+{
+    "id": "a-very-unique-id",
+    "things": [
+        {
+            "id": "l0",
+            "type": "lamp"
+        },
+        {
+            "id": "l1",
+            "type": "lamp"
+        },
+        {
+            "id": "l2",
+            "type": "lamp"
+        },
+        {
+            "id": "l3",
+            "type": "lamp"
+        },
+        {
+            "id": "ldr",
+            "type": "light"
+        }
+    ],
+    "actions": []
+}
