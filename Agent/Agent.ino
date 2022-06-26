@@ -5,6 +5,8 @@
 #include <WiFiUdp.h>
 #include <ArduinoMqttClient.h>
 
+#define INTERVAL 10000
+
 const char* ssid = "RADIN-L";
 const char* password = "radinradin";
 
@@ -23,13 +25,18 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", 16200);
 const uint8_t LDR_PIN = A0; 
 int LED_PINS[4] = {16, 5, 4, 0};
 
-
-
+unsigned long previousMillis = 0;
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   String output;
+
+  for (int i = 0; i < 4; i++) {
+    pinMode(LED_PINS[i], OUTPUT);
+    digitalWrite(LED_PINS[i], LOW);
+  }
+  pinMode(LDR_PIN, INPUT);
 
   WiFi.mode(WIFI_STA);
   connectToWifi();
@@ -38,13 +45,62 @@ void setup() {
   // Initialize a NTPClient to get time
   timeClient.begin();
   timeClient.update();
- 
+
+  // set the message receive callback
+  mqttClient.onMessage(onMqttMessage);
+
+  Serial.print("Subscribing to topic: ");
+  Serial.println(notifTopic);
+  Serial.println();
+  
+  // subscribe to a topic
+  mqttClient.subscribe(notifTopic);
+  
 }
 
+String pingMsg;
+String logMsg;
 
 void loop() {
   // put your main code here, to run repeatedly:
+  mqttClient.poll();
+  unsigned long currentMillis = millis();
+  
+  if (currentMillis - previousMillis >= INTERVAL) {
+    previousMillis = currentMillis;
+    int lightValue = analogRead(LDR_PIN);
 
+    // ping 
+    pingMsg = pingJson();
+    mqttClient.beginMessage(pingTopic);
+    mqttClient.print(pingMsg);
+    mqttClient.endMessage();
+    
+    
+
+    // log
+    logMsg = logJson(lightValue);
+    mqttClient.beginMessage(logTopic);
+    mqttClient.print(logMsg);
+    mqttClient.endMessage();
+  }
+}
+
+
+void onMqttMessage(int messageSize) {
+  String rcvBuff = "";
+  
+  Serial.println("Received a message with topic '");
+  Serial.print(mqttClient.messageTopic());
+  Serial.print("', length ");
+  Serial.print(messageSize);
+  Serial.println(" bytes:");
+
+  while (mqttClient.available()) {
+    rcvBuff += (char)mqttClient.read();
+  }
+  
+  parseNotifJson(rcvBuff);
 }
 
 String pingJson() {
@@ -100,7 +156,21 @@ String logJson(short value) {
   return output;
 }
 
+void parseNotifJson(String input) {
+  StaticJsonDocument<192> doc;
+  
+  DeserializationError error = deserializeJson(doc, input);
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.f_str());
+    return;
+  }
+  
+  const char* device = doc["device"]; // "l1"
+  bool settings_0_value = doc["settings"][0]["value"]; // true
 
+  digitalWrite(LED_PINS[device[1] - '0'], settings_0_value ? HIGH : LOW);
+}
 
 void connectToWifi() {
   // Connect to Wi-Fi
