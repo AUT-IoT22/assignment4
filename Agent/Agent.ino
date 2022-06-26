@@ -1,3 +1,4 @@
+#define ARDUINOJSON_USE_LONG_LONG 1
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -5,8 +6,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoMqttClient.h>
 
-#define INTERVAL 10000
-
+#define INTERVAL 5000
 const char* ssid = "RADIN-L";
 const char* password = "radinradin";
 
@@ -20,7 +20,7 @@ const char notifTopic[]  = "I1820/main/configuration/request";
 
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 16200);
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 const uint8_t LDR_PIN = A0; 
 int LED_PINS[4] = {16, 5, 4, 0};
@@ -68,7 +68,7 @@ void loop() {
   
   if (currentMillis - previousMillis >= INTERVAL) {
     previousMillis = currentMillis;
-    int lightValue = analogRead(LDR_PIN);
+    int lightValue = 100 - (analogRead(LDR_PIN) * 100) / 1024;
 
     // ping 
     pingMsg = pingJson();
@@ -80,6 +80,7 @@ void loop() {
 
     // log
     logMsg = logJson(lightValue);
+    Serial.println(logMsg);
     mqttClient.beginMessage(logTopic);
     mqttClient.print(logMsg);
     mqttClient.endMessage();
@@ -158,7 +159,7 @@ String logJson(short value) {
 
 void parseNotifJson(String input) {
   StaticJsonDocument<192> doc;
-  
+    
   DeserializationError error = deserializeJson(doc, input);
   if (error) {
     Serial.print(F("deserializeJson() failed: "));
